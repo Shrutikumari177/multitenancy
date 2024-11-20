@@ -1,0 +1,12 @@
+GET http://localhost:4004/odata/v4/book/Books
+
+###
+
+POST http://localhost:4004/odata/v4/Book/Books
+Content-Type: application/json
+
+
+  {
+      "BookName": "dark deception",
+      "Author": "Rina kent"
+  }
