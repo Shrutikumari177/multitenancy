@@ -8,6 +8,9 @@
       ]
     }
   ],
+  "oauth2-configuration": {
+    "redirect-uris": ["https://*.cfapps.us10-001.hana.ondemand.com/**"]
+  },
   "attributes": [],
   "role-templates": []
 }
