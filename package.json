@@ -6,9 +6,11 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
+    "@cap-js/hana": "^1",
     "@sap/cds": "^8",
+    "@sap/cds-mtxs": "^2",
     "express": "^4",
-    "@cap-js/hana": "^1"
+    "@sap/xssec": "^4"
   },
   "devDependencies": {
     "@cap-js/cds-types": "^0.7.0",
@@ -22,6 +24,14 @@
   "cds": {
     "sql": {
       "native_hana_associations": false
+    },
+    "profile": "with-mtx-sidecar",
+    "requires": {
+      "[production]": {
+        "multitenancy": true,
+        "auth": "xsuaa",
+        "db": "hana"
+      }
     }
   }
 }

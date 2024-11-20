@@ -26,18 +26,88 @@ modules:
           srv-url: ${default-url}
     requires:
       - name: multitenant-db
+      - name: multitenant-auth
 
-  - name: multitenant-db-deployer
-    type: hdb
-    path: gen/db
+  - name: multitenant-mtx
+    type: nodejs
+    path: gen/mtx/sidecar
+    build-parameters:
+      builder: npm-ci
     parameters:
-      buildpack: nodejs_buildpack
+      memory: 256M
+      disk-quota: 512M
+    provides:
+      - name: mtx-api
+        properties:
+          mtx-url: ${default-url}
     requires:
       - name: multitenant-db
+      - name: multitenant-auth
+      - name: multitenant-registry
+      - name: app-api
+        properties:
+          SUBSCRIPTION_URL: ~{app-protocol}://\${tenant_subdomain}-~{app-uri}
+
+  - name: multitenant
+    type: approuter.nodejs
+    path: app/router
+    parameters:
+      keep-existing-routes: true
+      disk-quota: 256M
+      memory: 256M
+    properties:
+      TENANT_HOST_PATTERN: "^(.*)-${default-uri}"
+    requires:
+      - name: srv-api
+        group: destinations
+        properties:
+          name: srv-api # must be used in xs-app.json as well
+          url: ~{srv-url}
+          forwardAuthToken: true
+      - name: mtx-api
+        group: destinations
+        properties:
+          name: mtx-api # must be used in xs-app.json as well
+          url: ~{mtx-url}
+      - name: multitenant-auth
+    provides:
+      - name: app-api
+        properties:
+          app-protocol: ${protocol}
+          app-uri: ${default-uri}
 
 resources:
-  - name: multitenant-db
-    type: com.sap.xs.hdi-container
+  - name: multitenant-registry
+    type: org.cloudfoundry.managed-service
+    requires:
+      - name: mtx-api
     parameters:
-      service: hana
-      service-plan: hdi-shared
+      service: saas-registry
+      service-plan: application
+      config:
+        xsappname: multitenant-${org}-${space}
+        appName: multitenant-${org}-${space}
+        displayName: multitenant
+        description: A simple CAP project.
+        category: 'Category'
+        appUrls:
+          getDependencies: ~{mtx-api/mtx-url}/-/cds/saas-provisioning/dependencies
+          onSubscription: ~{mtx-api/mtx-url}/-/cds/saas-provisioning/tenant/{tenantId}
+          onSubscriptionAsync: true
+          onUnSubscriptionAsync: true
+          onUpdateDependenciesAsync: true
+          callbackTimeoutMillis: 300000 # Increase if your deployments are taking longer than that
+  - name: multitenant-db
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: service-manager
+      service-plan: container
+  - name: multitenant-auth
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
+      config:
+        xsappname: multitenant-${org}-${space}
+        tenant-mode: shared
